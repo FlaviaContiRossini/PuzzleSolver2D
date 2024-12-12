@@ -1,0 +1,88 @@
+# Testing for Puzzle Solver Web App
+# This script provides unit and integration tests for the backend and models
+
+import unittest
+from pathlib import Path
+import cv2
+import numpy as np
+from backend.app import app  # Import the Flask app for integration testing
+from models.puzzle_solver import PuzzleSolver  # Import the model class
+from data.data_handling import preprocess_image, load_image  # Import data handling utilities
+
+class TestPuzzleSolver(unittest.TestCase):
+    """
+    Unit tests for the PuzzleSolver class.
+    """
+
+    def setUp(self):
+        # Initialize PuzzleSolver instance
+        self.solver = PuzzleSolver()
+        self.test_image_path = "data/test_images/example_puzzle.jpg"
+        self.processed_image_path = preprocess_image(self.test_image_path)
+
+    def test_detect_pieces(self):
+        # Load test image
+        image = load_image(self.processed_image_path)
+
+        # Detect pieces
+        pieces = self.solver.detect_pieces(image)
+        
+        # Assert pieces are detected (non-empty list)
+        self.assertTrue(len(pieces) > 0, "No pieces detected in the test image.")
+
+    def test_match_edges(self):
+        # Create mock pieces for edge matching
+        piece1 = np.ones((10, 10, 3), dtype=np.uint8) * 255  # White square
+        piece2 = np.ones((10, 10, 3), dtype=np.uint8) * 250  # Slightly darker square
+
+        # Match edges
+        score = self.solver.match_edges(piece1, piece2)
+        
+        # Assert score is within expected range
+        self.assertTrue(0 <= score <= 5, "Edge matching score is out of range.")
+
+    def test_assemble_puzzle(self):
+        # Create mock pieces
+        pieces = [
+            np.ones((10, 10, 3), dtype=np.uint8) * 255,
+            np.ones((10, 10, 3), dtype=np.uint8) * 250,
+        ]
+
+        # Assemble puzzle
+        solution = self.solver.assemble_puzzle(pieces)
+
+        # Assert solution contains all pieces
+        self.assertEqual(len(solution), len(pieces), "Not all pieces were included in the solution.")
+
+class TestBackendAPI(unittest.TestCase):
+    """
+    Integration tests for the backend API.
+    """
+
+    def setUp(self):
+        # Set up Flask test client
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def test_index_route(self):
+        # Test the index route
+        response = self.app.get("/")
+        self.assertEqual(response.status_code, 200, "Index route did not return 200 OK.")
+        self.assertIn(b"Puzzle Solver Backend is running", response.data)
+
+    def test_solve_route_with_valid_image(self):
+        # Upload a valid test image
+        with open("data/test_images/example_puzzle.jpg", "rb") as test_image:
+            response = self.app.post("/solve", data={"image": test_image})
+
+        self.assertEqual(response.status_code, 200, "Solve route did not return 200 OK.")
+        self.assertIn("steps", response.json, "Response JSON does not contain solution steps.")
+
+    def test_solve_route_with_invalid_request(self):
+        # Upload with no file
+        response = self.app.post("/solve", data={})
+        self.assertEqual(response.status_code, 400, "Invalid request did not return 400 Bad Request.")
+
+# Run tests
+if __name__ == "__main__":
+    unittest.main()
