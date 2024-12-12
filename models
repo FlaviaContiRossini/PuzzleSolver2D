@@ -1,0 +1,103 @@
+# Models for Puzzle Solver Web App
+# This script includes a basic structure for handling puzzle-solving logic using models
+
+import cv2
+import numpy as np
+
+class PuzzleSolver:
+    """
+    A class to handle the logic of solving 2D puzzles from images.
+    This includes piece detection, edge matching, and solution assembly.
+    """
+
+    def __init__(self):
+        # Configuration parameters (e.g., thresholds for matching)
+        self.edge_match_threshold = 0.1  # Example threshold for edge similarity
+
+    def detect_pieces(self, image):
+        """
+        Detects puzzle pieces in the given image.
+        :param image: Input image as a NumPy array
+        :return: List of detected pieces (bounding box or cropped images)
+        """
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 50, 150)
+        
+        # Find contours of the pieces
+        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        pieces = []
+
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            piece = image[y:y+h, x:x+w]  # Crop the piece from the image
+            pieces.append(piece)
+
+        return pieces
+
+    def match_edges(self, piece1, piece2):
+        """
+        Matches edges of two puzzle pieces.
+        :param piece1: Image of the first puzzle piece
+        :param piece2: Image of the second puzzle piece
+        :return: Matching score (lower is better)
+        """
+        # Placeholder: Compare average color of edges as a simple heuristic
+        edge1 = piece1[0, :, :].mean(axis=0)  # Top edge of piece1
+        edge2 = piece2[-1, :, :].mean(axis=0)  # Bottom edge of piece2
+        
+        # Calculate similarity score (can be replaced with ML-based approach)
+        similarity = np.sum(np.abs(edge1 - edge2)) / len(edge1)
+        return similarity
+
+    def assemble_puzzle(self, pieces):
+        """
+        Assembles the puzzle pieces based on edge matching scores.
+        :param pieces: List of detected pieces
+        :return: Ordered list of pieces forming the solved puzzle
+        """
+        # Placeholder: Simple row-wise assembly
+        solution = []
+
+        # Start with a random piece and match edges iteratively
+        remaining_pieces = pieces[:]
+        current_piece = remaining_pieces.pop(0)
+        solution.append(current_piece)
+
+        while remaining_pieces:
+            next_piece = min(remaining_pieces, key=lambda p: self.match_edges(current_piece, p))
+            solution.append(next_piece)
+            remaining_pieces.remove(next_piece)
+            current_piece = next_piece
+
+        return solution
+
+    def solve(self, image_path):
+        """
+        Main function to solve the puzzle from an image file.
+        :param image_path: Path to the input image
+        :return: List of solution steps
+        """
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError("Invalid image file.")
+
+        pieces = self.detect_pieces(image)
+        if not pieces:
+            raise ValueError("No puzzle pieces detected.")
+
+        solution = self.assemble_puzzle(pieces)
+
+        # Simulate solution steps for now
+        steps = [f"Step {i+1}: Place piece {i+1}" for i in range(len(solution))]
+        return steps
+
+# Example usage
+if __name__ == "__main__":
+    solver = PuzzleSolver()
+    image_path = "data/test_puzzle.jpg"  # Example image file
+    try:
+        steps = solver.solve(image_path)
+        for step in steps:
+            print(step)
+    except Exception as e:
+        print(f"Error: {e}")
