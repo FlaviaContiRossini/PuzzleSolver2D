@@ -1,0 +1,81 @@
+# Data handling and structure for the Puzzle Solver Web App
+# This script includes utilities to manage and preprocess data for testing and development
+
+import os
+import shutil
+from pathlib import Path
+import cv2
+
+# Directory structure
+DATA_DIR = "data"
+RAW_DIR = os.path.join(DATA_DIR, "raw")
+PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
+TEST_IMAGES_DIR = os.path.join(DATA_DIR, "test_images")
+
+# Create necessary directories if they don't exist
+os.makedirs(RAW_DIR, exist_ok=True)
+os.makedirs(PROCESSED_DIR, exist_ok=True)
+os.makedirs(TEST_IMAGES_DIR, exist_ok=True)
+
+def load_image(image_path):
+    """
+    Loads an image from the given path.
+    :param image_path: Path to the image file
+    :return: Loaded image as a NumPy array
+    """
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError(f"Image at {image_path} could not be loaded.")
+    return image
+
+def save_image(image, output_path):
+    """
+    Saves an image to the specified path.
+    :param image: Image as a NumPy array
+    :param output_path: Path to save the image
+    """
+    cv2.imwrite(output_path, image)
+
+def preprocess_image(image_path, output_dir=PROCESSED_DIR):
+    """
+    Preprocesses an image for puzzle-solving, including resizing and edge enhancement.
+    :param image_path: Path to the raw image
+    :param output_dir: Directory to save the processed image
+    :return: Path to the processed image
+    """
+    image = load_image(image_path)
+
+    # Resize the image to a standard size (e.g., 1024x1024)
+    resized_image = cv2.resize(image, (1024, 1024))
+
+    # Apply edge enhancement (e.g., using Canny or sharpening)
+    gray = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 50, 150)
+
+    # Save processed image
+    filename = Path(image_path).stem + "_processed.png"
+    processed_path = os.path.join(output_dir, filename)
+    save_image(edges, processed_path)
+
+    return processed_path
+
+def organize_test_data(source_dir, dest_dir=TEST_IMAGES_DIR):
+    """
+    Copies a set of test images to the designated test directory.
+    :param source_dir: Directory containing raw test images
+    :param dest_dir: Directory to store the test images
+    """
+    for filename in os.listdir(source_dir):
+        if filename.lower().endswith((".png", ".jpg", ".jpeg")):
+            shutil.copy(os.path.join(source_dir, filename), os.path.join(dest_dir, filename))
+
+# Example usage
+if __name__ == "__main__":
+    # Example: Preprocess a test image
+    raw_image_path = os.path.join(RAW_DIR, "example_puzzle.jpg")
+    processed_image_path = preprocess_image(raw_image_path)
+    print(f"Processed image saved to: {processed_image_path}")
+
+    # Organize test images
+    organize_test_data(RAW_DIR)
+    print(f"Test images organized in: {TEST_IMAGES_DIR}")
