@@ -24,10 +24,26 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def process_image(image_path):
-    """
-    Placeholder function to simulate puzzle-solving logic.
-    Replace this with actual edge detection, piece matching, and solution generation.
-    """
+    import cv2
+    import numpy as np
+
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError("Invalid image file.")
+
+    # Implement edge detection
+    edges = cv2.Canny(image, 100, 200)
+
+    # Implement piece detection and matching logic
+    # Placeholder for actual implementation
+    steps = [
+        "Step 1: Analyze edges and detect pieces.",
+        "Step 2: Match similar edges.",
+        "Step 3: Assemble pieces row by row.",
+        "Step 4: Puzzle complete!"
+    ]
+    return steps
+
     # Load the image
     image = cv2.imread(image_path)
     if image is None:
@@ -45,25 +61,26 @@ def process_image(image_path):
 # Routes
 @app.route("/solve", methods=["POST"])
 def solve_puzzle():
-    if "image" not in request.files:
-        return jsonify({"error": "No file part"}), 400
+    try:
+        if "image" not in request.files:
+            return jsonify({"error": "No file part"}), 400
 
-    file = request.files["image"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
+        file = request.files["image"]
+        if file.filename == "":
+            return jsonify({"error": "No selected file"}), 400
 
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        file.save(file_path)
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(file_path)
 
-        try:
             steps = process_image(file_path)
             return jsonify({"steps": steps}), 200
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-    else:
-        return jsonify({"error": "File type not allowed"}), 400
+        else:
+            return jsonify({"error": "File type not allowed"}), 400
+    except Exception as e:
+        app.logger.error(f"Error processing image: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route("/", methods=["GET"])
 def index():
